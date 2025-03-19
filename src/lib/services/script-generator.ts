@@ -1,8 +1,32 @@
 import { Website } from "../schemas/website";
 import { v4 as uuidv4 } from "uuid";
+import { Document } from "mongoose";
+
+interface WebsiteDocument extends Document {
+	_id: string;
+	scriptId: string;
+	userId: string;
+	url: string;
+	name: string;
+	status: string;
+	lastCrawl?: Date;
+	issues?: Array<{
+		type: string;
+		description: string;
+		severity: string;
+		url?: string;
+		timestamp?: Date;
+	}>;
+	crawlData?: Array<{
+		url: string;
+		timestamp: Date;
+		data: any;
+	}>;
+	scriptTag?: string;
+}
 
 export class ScriptGeneratorService {
-	constructor(private website: Website) {}
+	constructor(private website: WebsiteDocument) {}
 
 	async generateScript(): Promise<string> {
 		// Generate a unique script ID if not exists
@@ -74,6 +98,62 @@ export class ScriptGeneratorService {
             seobuddy('onCrawl', function(data) {
                 console.log('SeoBuddy Crawl:', data);
                 // You can handle crawl data here
+            });
+
+            // Handle updates
+            seobuddy('update', function(data) {
+                console.log('SeoBuddy Update:', data);
+                if (!data.url || !data.type || !data.value) {
+                    console.error('Invalid update data:', data);
+                    return;
+                }
+
+                // Send update event to server
+                fetch('/api/script/events', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        websiteId: '${this.website._id}',
+                        scriptId: '${this.website.scriptId}',
+                        event: 'update',
+                        data: {
+                            url: data.url,
+                            type: data.type,
+                            value: data.value
+                        }
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to update');
+                    }
+                    console.log('Update successful');
+                })
+                .catch(error => {
+                    console.error('Update failed:', error);
+                });
+            });
+
+            // Function to update page title
+            seobuddy('updateTitle', function(url, newTitle) {
+                console.log('Updating title for:', url, 'to:', newTitle);
+                seobuddy('update', {
+                    url: url,
+                    type: 'title',
+                    value: newTitle
+                });
+            });
+
+            // Function to update meta description
+            seobuddy('updateMeta', function(url, newMeta) {
+                console.log('Updating meta for:', url, 'to:', newMeta);
+                seobuddy('update', {
+                    url: url,
+                    type: 'meta',
+                    value: newMeta
+                });
             });
         `.trim();
 	}

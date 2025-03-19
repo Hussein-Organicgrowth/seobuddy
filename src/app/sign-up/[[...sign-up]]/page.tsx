@@ -7,14 +7,11 @@ export default function SignUpPage() {
 				appearance={{
 					elements: {
 						rootBox: "mx-auto",
-						card: "shadow-xl",
+						card: "shadow-none",
 					},
 				}}
-				path="/sign-up"
-				afterSignInUrl="/dashboard"
 				afterSignUpUrl="/dashboard"
-				redirectUrl="/dashboard"
-				routing="path"
+				afterSignInUrl="/dashboard"
 				signInUrl="/sign-in"
 			/>
 		</div>
