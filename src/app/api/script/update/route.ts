@@ -54,28 +54,11 @@ export async function POST(req: Request) {
 		);
 		console.log("[Update API] Update result:", result);
 
-		// Trigger a script update event
-		console.log("[Update API] Triggering script update event");
-		const eventResponse = await fetch(
-			`${process.env.NEXT_PUBLIC_APP_URL}/api/script/events`,
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					websiteId,
-					scriptId: website.scriptId,
-					event: "update",
-					data: {
-						url,
-						type,
-						value,
-					},
-				}),
-			}
+		// Update lastCrawl timestamp to indicate a change
+		await Website.updateOne(
+			{ _id: websiteId },
+			{ $set: { lastCrawl: new Date() } }
 		);
-		console.log("[Update API] Event response status:", eventResponse.status);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

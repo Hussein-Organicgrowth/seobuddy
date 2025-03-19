@@ -80,7 +80,7 @@ export class ScriptGeneratorService {
                 };
                 js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
                 js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-            }(window,document,'script','seobuddy','/api/script/${this.website.scriptId}.js'));
+            }(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}.js'));
 
             // Initialize SeoBuddy
             seobuddy('init', {
@@ -108,21 +108,43 @@ export class ScriptGeneratorService {
                     return;
                 }
 
+                // Only update if we're on the matching URL
+                if (data.url === window.location.href) {
+                    if (data.type === 'title') {
+                        // Update the page title
+                        document.title = data.value;
+                        // Also update any meta title tags
+                        const metaTitle = document.querySelector('meta[property="og:title"]');
+                        if (metaTitle) {
+                            metaTitle.setAttribute('content', data.value);
+                        }
+                        console.log('Updated page title to:', data.value);
+                    } else if (data.type === 'meta') {
+                        // Update meta description
+                        const metaDesc = document.querySelector('meta[name="description"]');
+                        if (metaDesc) {
+                            metaDesc.setAttribute('content', data.value);
+                        }
+                        // Also update Open Graph description if it exists
+                        const ogDesc = document.querySelector('meta[property="og:description"]');
+                        if (ogDesc) {
+                            ogDesc.setAttribute('content', data.value);
+                        }
+                        console.log('Updated meta description to:', data.value);
+                    }
+                }
+
                 // Send update event to server
-                fetch('/api/script/events', {
+                fetch('${process.env.NEXT_PUBLIC_APP_URL}/api/script/update', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         websiteId: '${this.website._id}',
-                        scriptId: '${this.website.scriptId}',
-                        event: 'update',
-                        data: {
-                            url: data.url,
-                            type: data.type,
-                            value: data.value
-                        }
+                        url: data.url,
+                        type: data.type,
+                        value: data.value
                     })
                 })
                 .then(response => {

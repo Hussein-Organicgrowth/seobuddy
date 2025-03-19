@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Play, FileCode, Copy } from "lucide-react";
 import { CrawlDataView } from "./crawl-data-view";
+import { ScriptGeneratorService } from "@/lib/services/script-generator";
+import { Website } from "@/lib/schemas/website";
 
 interface WebsiteDetailsFormProps {
 	website: {
@@ -119,7 +121,28 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 	const [crawlProgress, setCrawlProgress] = useState<CrawlProgress | null>(
 		null
 	);
+	const [scriptContent, setScriptContent] = useState<string>("");
 	const { toast } = useToast();
+
+	useEffect(() => {
+		const generateScript = async () => {
+			try {
+				const scriptGenerator = new ScriptGeneratorService(website as any);
+				const content = await scriptGenerator.getScriptContent();
+				setScriptContent(content);
+			} catch (error) {
+				console.error("Error generating script:", error);
+				toast({
+					title: "Error",
+					description: "Failed to generate script content.",
+					variant: "destructive",
+				});
+			}
+		};
+
+		generateScript();
+	}, [website, toast]);
+
 	const handleCrawl = async () => {
 		try {
 			setIsLoading(true);
@@ -220,55 +243,7 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 	};
 
 	const copyScriptTag = () => {
-		const scriptContent = `<script>
-		(function(w,d,s,o,f,js,fjs){
-			w['SeoBuddy']=o;w[o]=w[o]||function(){
-				(w[o].q=w[o].q||[]).push(arguments)
-			};
-			js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
-			js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-		}(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${website.scriptId}.js'));
-
-		// Initialize SeoBuddy with configuration
-		seobuddy('init', {
-			websiteId: '${website._id}',
-			scriptId: '${website.scriptId}',
-			autoFix: true,
-			reportIssues: true
-		});
-
-		// Handle SEO issues and fixes
-		seobuddy('onIssue', function(issue) {
-			console.log('SeoBuddy Issue:', issue);
-			// Issues are automatically fixed when autoFix is true
-		});
-
-		// Handle automatic fixes
-		seobuddy('onFix', function(fix) {
-			console.log('SeoBuddy Fix Applied:', fix);
-		});
-
-		// Handle crawl results
-		seobuddy('onCrawl', function(data) {
-			console.log('SeoBuddy Crawl Results:', data);
-		});
-
-		// Start automatic SEO analysis
-		seobuddy('analyze', {
-			checkTitle: true,
-			checkMetaDescription: true,
-			checkHeadings: true,
-			checkImages: true,
-			checkLinks: true,
-			checkCanonical: true,
-			checkRobots: true,
-			checkSchema: true,
-			checkMobile: true,
-			checkPerformance: true
-		});
-		</script>`;
-
-		navigator.clipboard.writeText(scriptContent);
+		navigator.clipboard.writeText(`<script>${scriptContent}</script>`);
 		toast({
 			title: "Copied",
 			description:
@@ -279,54 +254,6 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 	const toggleScript = () => {
 		setShowScript(!showScript);
 	};
-
-	const scriptContent = `<script>
-	(function(w,d,s,o,f,js,fjs){
-		w['SeoBuddy']=o;w[o]=w[o]||function(){
-			(w[o].q=w[o].q||[]).push(arguments)
-		};
-		js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
-		js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-	}(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${website.scriptId}.js'));
-
-	// Initialize SeoBuddy with configuration
-	seobuddy('init', {
-		websiteId: '${website._id}',
-		scriptId: '${website.scriptId}',
-		autoFix: true,
-		reportIssues: true
-	});
-
-	// Handle SEO issues and fixes
-	seobuddy('onIssue', function(issue) {
-		console.log('SeoBuddy Issue:', issue);
-		// Issues are automatically fixed when autoFix is true
-	});
-
-	// Handle automatic fixes
-	seobuddy('onFix', function(fix) {
-		console.log('SeoBuddy Fix Applied:', fix);
-	});
-
-	// Handle crawl results
-	seobuddy('onCrawl', function(data) {
-		console.log('SeoBuddy Crawl Results:', data);
-	});
-
-	// Start automatic SEO analysis
-	seobuddy('analyze', {
-		checkTitle: true,
-		checkMetaDescription: true,
-		checkHeadings: true,
-		checkImages: true,
-		checkLinks: true,
-		checkCanonical: true,
-		checkRobots: true,
-		checkSchema: true,
-		checkMobile: true,
-		checkPerformance: true
-	});
-	</script>`;
 
 	return (
 		<div className="space-y-6">
