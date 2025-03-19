@@ -1,39 +1,39 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { Website } from "@/lib/schemas/website";
 import connectDB from "@/lib/mongodb";
+import { ScriptGeneratorService } from "@/lib/services/script-generator";
 
 export async function GET(
 	req: Request,
 	{ params }: { params: { scriptId: string } }
 ) {
 	try {
-		const { userId } = await auth();
-		if (!userId) {
-			return new NextResponse("Unauthorized", { status: 401 });
-		}
-
-		// Connect to MongoDB
+		console.log("[Script API] Received request for script:", params.scriptId);
 		await connectDB();
+		console.log("[Script API] Connected to MongoDB");
 
-		// Find website by scriptId
-		const website = await Website.findOne({
-			scriptId: params.scriptId,
-			userId: userId,
-		});
+		const website = await Website.findOne({ scriptId: params.scriptId });
+		console.log("[Script API] Found website:", website ? "Yes" : "No");
 
 		if (!website) {
-			return new NextResponse("Script not found", { status: 404 });
+			console.log("[Script API] Website not found");
+			return new NextResponse("Website not found", { status: 404 });
 		}
 
-		// Set the content type to JavaScript
-		return new NextResponse(website.scriptTag, {
+		const scriptGenerator = new ScriptGeneratorService(website);
+		const scriptContent = await scriptGenerator.getScriptContent();
+		console.log("[Script API] Generated script content");
+
+		return new NextResponse(scriptContent, {
 			headers: {
 				"Content-Type": "application/javascript",
+				"Cache-Control": "no-cache, no-store, must-revalidate",
+				Pragma: "no-cache",
+				Expires: "0",
 			},
 		});
 	} catch (error) {
-		console.error("Error serving script:", error);
+		console.error("[Script API] Error:", error);
 		return new NextResponse("Internal Server Error", { status: 500 });
 	}
 }

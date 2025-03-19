@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { Website } from "@/lib/schemas/website";
 import connectDB from "@/lib/mongodb";
 
 export async function POST(req: Request) {
 	try {
 		console.log("[Update API] Received update request");
-		const { userId } = await auth();
-		if (!userId) {
-			console.log("[Update API] Unauthorized - No userId found");
-			return new NextResponse("Unauthorized", { status: 401 });
-		}
-
 		const { websiteId, url, type, value } = await req.json();
 		console.log("[Update API] Request data:", { websiteId, url, type, value });
 
@@ -27,7 +20,6 @@ export async function POST(req: Request) {
 		// Find website
 		const website = await Website.findOne({
 			_id: websiteId,
-			userId: userId,
 		});
 		console.log("[Update API] Found website:", website ? "Yes" : "No");
 

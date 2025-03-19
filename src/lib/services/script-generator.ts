@@ -80,7 +80,7 @@ export class ScriptGeneratorService {
                 };
                 js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
                 js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-            }(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}.js'));
+            }(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}'));
 
             // Initialize SeoBuddy
             seobuddy('init', {
@@ -139,6 +139,7 @@ export class ScriptGeneratorService {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ${this.website.scriptId}'
                     },
                     body: JSON.stringify({
                         websiteId: '${this.website._id}',
