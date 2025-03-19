@@ -153,8 +153,8 @@ export class ScriptGeneratorService {
                 }
 
                 // Normalize URLs for comparison
-                const currentUrl = window.location.href.split('#')[0].replace(/\/$/, '');
-                const targetUrl = data.url.split('#')[0].replace(/\/$/, '');
+                const currentUrl = window.location.href.split('#')[0].replace(/\\/$/, '');
+                const targetUrl = data.url.split('#')[0].replace(/\\/$/, '');
                 
                 // Only update if we're on the matching URL
                 if (currentUrl === targetUrl) {
@@ -199,7 +199,7 @@ export class ScriptGeneratorService {
                 .then(response => {
                     if (!response.ok) {
                         return response.text().then(text => {
-                            throw new Error(`Update failed: ${text}`);
+                            throw new Error('Update failed: ' + text);
                         });
                     }
                     console.log('Update successful');
@@ -226,8 +226,8 @@ export class ScriptGeneratorService {
                     url: url,
                     type: 'meta',
                     value: newMeta
-                });
-            });
+                });           
+            }); 
         </script>
         `.trim();
 	}
