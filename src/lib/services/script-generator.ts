@@ -73,6 +73,7 @@ export class ScriptGeneratorService {
 		}
 
 		return `
+        <script>
             // SeoBuddy Client Script
             (function(w,d,s,o,f,js,fjs){
                 w['SeoBuddy']=o;w[o]=w[o]||function(){
@@ -87,6 +88,49 @@ export class ScriptGeneratorService {
                 websiteId: '${this.website._id}',
                 scriptId: '${this.website.scriptId}'
             });
+
+            // Function to check for updates
+            async function checkForUpdates() {
+                try {
+                    const response = await fetch(
+                        '${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}/updates?url=' + 
+                        encodeURIComponent(window.location.href)
+                    );
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch updates');
+                    }
+
+                    const { updates } = await response.json();
+                    
+                    // Apply each update
+                    updates.forEach(update => {
+                        if (update.type === 'title') {
+                            document.title = update.value;
+                            const metaTitle = document.querySelector('meta[property="og:title"]');
+                            if (metaTitle) {
+                                metaTitle.setAttribute('content', update.value);
+                            }
+                        } else if (update.type === 'meta') {
+                            const metaDesc = document.querySelector('meta[name="description"]');
+                            if (metaDesc) {
+                                metaDesc.setAttribute('content', update.value);
+                            }
+                            const ogDesc = document.querySelector('meta[property="og:description"]');
+                            if (ogDesc) {
+                                ogDesc.setAttribute('content', update.value);
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Failed to check for updates:', error);
+                }
+            }
+
+            // Check for updates every 30 seconds
+            setInterval(checkForUpdates, 30000);
+            // Also check when the page loads
+            checkForUpdates();
 
             // Handle SEO issues
             seobuddy('onIssue', function(issue) {
@@ -108,8 +152,12 @@ export class ScriptGeneratorService {
                     return;
                 }
 
+                // Normalize URLs for comparison
+                const currentUrl = window.location.href.split('#')[0].replace(/\/$/, '');
+                const targetUrl = data.url.split('#')[0].replace(/\/$/, '');
+                
                 // Only update if we're on the matching URL
-                if (data.url === window.location.href) {
+                if (currentUrl === targetUrl) {
                     if (data.type === 'title') {
                         // Update the page title
                         document.title = data.value;
@@ -150,7 +198,9 @@ export class ScriptGeneratorService {
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Failed to update');
+                        return response.text().then(text => {
+                            throw new Error(`Update failed: ${text}`);
+                        });
                     }
                     console.log('Update successful');
                 })
@@ -178,6 +228,7 @@ export class ScriptGeneratorService {
                     value: newMeta
                 });
             });
+        </script>
         `.trim();
 	}
 }
