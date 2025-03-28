@@ -30,10 +30,30 @@ export async function GET(
 				"Cache-Control": "no-cache, no-store, must-revalidate",
 				Pragma: "no-cache",
 				Expires: "0",
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type, Authorization",
 			},
 		});
 	} catch (error) {
 		console.error("[Script API] Error:", error);
-		return new NextResponse("Internal Server Error", { status: 500 });
+		return new NextResponse("Internal Server Error", {
+			status: 500,
+			headers: {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			},
+		});
 	}
+}
+
+export async function OPTIONS() {
+	return new NextResponse(null, {
+		headers: {
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Methods": "GET, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+		},
+	});
 }

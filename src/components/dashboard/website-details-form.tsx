@@ -243,11 +243,12 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 	};
 
 	const copyScriptTag = () => {
-		navigator.clipboard.writeText(`<script>${scriptContent}</script>`);
+		const scriptTag = `<script src="${process.env.NEXT_PUBLIC_APP_URL}/scripts/${website.scriptId}.js"></script>`;
+		navigator.clipboard.writeText(scriptTag);
 		toast({
 			title: "Copied",
 			description:
-				"Script copied to clipboard. Paste it into your website's HTML.",
+				"Script tag copied to clipboard. Paste it into your website's HTML.",
 		});
 	};
 
@@ -379,18 +380,18 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 						<div className="space-y-4">
 							<div className="rounded-lg bg-muted p-4">
 								<p className="text-sm text-muted-foreground mb-2">
-									Copy and paste this script into your website's HTML. It will
-									automatically:
+									Copy and paste this script tag into your website's HTML. It
+									will automatically:
 								</p>
 								<ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-									<li>Analyze your page's SEO</li>
-									<li>Fix common SEO issues automatically</li>
+									<li>Update page titles and meta descriptions</li>
+									<li>Monitor for 404 errors</li>
+									<li>Track redirects</li>
 									<li>Report issues to your dashboard</li>
-									<li>Monitor performance and mobile optimization</li>
 								</ul>
 							</div>
 							<pre className="rounded-lg bg-muted p-4 text-sm overflow-x-auto">
-								{scriptContent}
+								{`<script src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${website.scriptId}.js"></script>`}
 							</pre>
 						</div>
 					)}

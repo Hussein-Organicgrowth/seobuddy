@@ -1,6 +1,8 @@
 import { Website } from "../schemas/website";
 import { v4 as uuidv4 } from "uuid";
 import { Document } from "mongoose";
+import fs from "fs/promises";
+import path from "path";
 
 interface WebsiteDocument extends Document {
 	_id: string;
@@ -35,23 +37,8 @@ export class ScriptGeneratorService {
 			await this.website.save();
 		}
 
-		// Generate the script content
-		const script = `
-            (function(w,d,s,o,f,js,fjs){
-                w['SeoBuddy']=o;w[o]=w[o]||function(){
-                    (w[o].q=w[o].q||[]).push(arguments)
-                };
-                js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
-                js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-            }(window,document,'script','seobuddy','/api/script/${this.website.scriptId}.js'));
-
-            seobuddy('init', {
-                websiteId: '${this.website._id}',
-                scriptId: '${this.website.scriptId}'
-            });
-        `.trim();
-
-		return script;
+		// Generate the simple script tag with the correct API endpoint
+		return `<script src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}"></script>`;
 	}
 
 	async generateScriptUrl(): Promise<string> {
@@ -72,172 +59,25 @@ export class ScriptGeneratorService {
 			throw new Error("Script ID not found");
 		}
 
-		return `
-        <script>
-            // SeoBuddy Client Script
-            (function(w,d,s,o,f,js,fjs){
-                w['SeoBuddy']=o;w[o]=w[o]||function(){
-                    (w[o].q=w[o].q||[]).push(arguments)
-                };
-                js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
-                js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-            }(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}'));
+		// Read the client script file
+		const clientScript = await fs.readFile(
+			path.join(process.cwd(), "src/lib/scripts/client.js"),
+			"utf-8"
+		);
 
-            // Store the scriptId for later use
-            const scriptId = '${this.website.scriptId}';
-            const websiteId = '${this.website._id}';
+		// Create the initialization script with the API URL
+		const initScript = `
+		// Initialize SeoBuddy configuration
+		window.seobuddy = {
+			websiteId: '${this.website._id}',
+			scriptId: '${this.website.scriptId}',
+			apiUrl: '${process.env.NEXT_PUBLIC_APP_URL}'
+		};
+		
+		// Load the client script
+		${clientScript}
+		`.trim();
 
-            // Initialize SeoBuddy
-            seobuddy('init', {
-                websiteId: websiteId,
-                scriptId: scriptId
-            });
-
-            // Function to check for updates
-            async function checkForUpdates() {
-                try {
-                    const response = await fetch(
-                        '${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}/updates?url=' + 
-                        encodeURIComponent(window.location.href),
-                        {
-                            headers: {
-                                'Authorization': 'Bearer ' + scriptId
-                            }
-                        }
-                    );
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch updates');
-                    }
-
-                    const { updates } = await response.json();
-                    
-                    // Apply each update
-                    updates.forEach(update => {
-                        if (update.type === 'title') {
-                            document.title = update.value;
-                            const metaTitle = document.querySelector('meta[property="og:title"]');
-                            if (metaTitle) {
-                                metaTitle.setAttribute('content', update.value);
-                            }
-                        } else if (update.type === 'meta') {
-                            const metaDesc = document.querySelector('meta[name="description"]');
-                            if (metaDesc) {
-                                metaDesc.setAttribute('content', update.value);
-                            }
-                            const ogDesc = document.querySelector('meta[property="og:description"]');
-                            if (ogDesc) {
-                                ogDesc.setAttribute('content', update.value);
-                            }
-                        }
-                    });
-                } catch (error) {
-                    console.error('Failed to check for updates:', error);
-                }
-            }
-
-            // Check for updates every 30 seconds
-            setInterval(checkForUpdates, 30000);
-            // Also check when the page loads
-            checkForUpdates();
-
-            // Handle SEO issues
-            seobuddy('onIssue', function(issue) {
-                console.log('SeoBuddy Issue:', issue);
-                // You can handle issues here
-            });
-
-            // Handle crawl requests
-            seobuddy('onCrawl', function(data) {
-                console.log('SeoBuddy Crawl:', data);
-                // You can handle crawl data here
-            });
-
-            // Handle updates
-            seobuddy('update', function(data) {
-                console.log('SeoBuddy Update:', data);
-                if (!data.url || !data.type || !data.value) {
-                    console.error('Invalid update data:', data);
-                    return;
-                }
-
-                // Normalize URLs for comparison
-                const currentUrl = window.location.href.split('#')[0].replace(/\\/$/, '');
-                const targetUrl = data.url.split('#')[0].replace(/\\/$/, '');
-                
-                // Only update if we're on the matching URL
-                if (currentUrl === targetUrl) {
-                    if (data.type === 'title') {
-                        // Update the page title
-                        document.title = data.value;
-                        // Also update any meta title tags
-                        const metaTitle = document.querySelector('meta[property="og:title"]');
-                        if (metaTitle) {
-                            metaTitle.setAttribute('content', data.value);
-                        }
-                        console.log('Updated page title to:', data.value);
-                    } else if (data.type === 'meta') {
-                        // Update meta description
-                        const metaDesc = document.querySelector('meta[name="description"]');
-                        if (metaDesc) {
-                            metaDesc.setAttribute('content', data.value);
-                        }
-                        // Also update Open Graph description if it exists
-                        const ogDesc = document.querySelector('meta[property="og:description"]');
-                        if (ogDesc) {
-                            ogDesc.setAttribute('content', data.value);
-                        }
-                        console.log('Updated meta description to:', data.value);
-                    }
-                }
-
-                // Send update event to server
-                fetch('${process.env.NEXT_PUBLIC_APP_URL}/api/script/update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + scriptId
-                    },
-                    body: JSON.stringify({
-                        websiteId: websiteId,
-                        url: data.url,
-                        type: data.type,
-                        value: data.value
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            throw new Error('Update failed: ' + text);
-                        });
-                    }
-                    console.log('Update successful');
-                })
-                .catch(error => {
-                    console.error('Update failed:', error);
-                });
-            });
-
-            // Function to update page title
-            seobuddy('updateTitle', function(url, newTitle) {
-                console.log('Updating title for:', url, 'to:', newTitle);
-                seobuddy('update', {
-                    url: url,
-                    type: 'title',
-                    value: newTitle
-                });
-            });
-
-            // Function to update meta description
-            seobuddy('updateMeta', function(url, newMeta) {
-                console.log('Updating meta for:', url, 'to:', newMeta);
-                seobuddy('update', {
-                    url: url,
-                    type: 'meta',
-                    value: newMeta
-                });           
-            }); 
-        </script>
-        `.trim();
+		return initScript;
 	}
 }
