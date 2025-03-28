@@ -15,7 +15,7 @@ export async function GET(
 	{ params }: { params: { scriptId: string } }
 ) {
 	try {
-		console.log("[Updates API] Received request for updates");
+		console.log("[Updates API] Received request for script:", params.scriptId);
 		await connectDB();
 		console.log("[Updates API] Connected to MongoDB");
 
@@ -27,34 +27,61 @@ export async function GET(
 			return new NextResponse("Website not found", { status: 404 });
 		}
 
-		// Get pending updates for the current URL
+		// Get the URL from query parameters
 		const url = new URL(req.url).searchParams.get("url");
 		if (!url) {
-			return new NextResponse("URL parameter is required", { status: 400 });
+			console.log("[Updates API] Missing URL parameter");
+			return new NextResponse("Missing URL parameter", { status: 400 });
 		}
 
+		// Find pending updates for this URL
 		const pendingUpdates =
 			website.pendingUpdates?.filter(
 				(update: PendingUpdate) => update.url === url && !update.applied
 			) || [];
 
+		console.log("[Updates API] Found pending updates:", pendingUpdates.length);
+
 		// Mark updates as applied
 		if (pendingUpdates.length > 0) {
-			await Website.updateOne(
-				{
-					_id: website._id,
-					"pendingUpdates.url": url,
-					"pendingUpdates.applied": false,
-				},
-				{
-					$set: { "pendingUpdates.$.applied": true },
+			website.pendingUpdates = website.pendingUpdates.map(
+				(update: PendingUpdate) => {
+					if (update.url === url && !update.applied) {
+						return { ...update, applied: true };
+					}
+					return update;
 				}
 			);
+			await website.save();
 		}
 
-		return NextResponse.json({ updates: pendingUpdates });
+		return new NextResponse(JSON.stringify(pendingUpdates), {
+			headers: {
+				"Content-Type": "application/json",
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			},
+		});
 	} catch (error) {
 		console.error("[Updates API] Error:", error);
-		return new NextResponse("Internal Server Error", { status: 500 });
+		return new NextResponse("Internal Server Error", {
+			status: 500,
+			headers: {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			},
+		});
 	}
+}
+
+export async function OPTIONS() {
+	return new NextResponse(null, {
+		headers: {
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Methods": "GET, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+		},
+	});
 }
