@@ -39,10 +39,15 @@ interface CrawlData {
 
 interface CrawlDataViewProps {
 	websiteId: string;
+	scriptId: string;
 	crawlData: CrawlData[];
 }
 
-export function CrawlDataView({ websiteId, crawlData }: CrawlDataViewProps) {
+export function CrawlDataView({
+	websiteId,
+	scriptId,
+	crawlData,
+}: CrawlDataViewProps) {
 	const [activeTab, setActiveTab] = useState("titles");
 	const [editingTitle, setEditingTitle] = useState<{
 		url: string;
@@ -66,6 +71,7 @@ export function CrawlDataView({ websiteId, crawlData }: CrawlDataViewProps) {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
+					Authorization: `Bearer ${scriptId}`,
 				},
 				body: JSON.stringify({
 					websiteId,
@@ -100,6 +106,7 @@ export function CrawlDataView({ websiteId, crawlData }: CrawlDataViewProps) {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
+					Authorization: `Bearer ${scriptId}`,
 				},
 				body: JSON.stringify({
 					websiteId,

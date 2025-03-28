@@ -355,7 +355,11 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 			)}
 
 			{website.crawlData && website.crawlData.length > 0 && (
-				<CrawlDataView websiteId={website._id} crawlData={website.crawlData} />
+				<CrawlDataView
+					websiteId={website._id}
+					scriptId={website.scriptId}
+					crawlData={website.crawlData}
+				/>
 			)}
 
 			<Card className="p-6">

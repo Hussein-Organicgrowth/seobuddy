@@ -83,10 +83,14 @@ export class ScriptGeneratorService {
                 js.id=o;js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
             }(window,document,'script','seobuddy','${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}'));
 
+            // Store the scriptId for later use
+            const scriptId = '${this.website.scriptId}';
+            const websiteId = '${this.website._id}';
+
             // Initialize SeoBuddy
             seobuddy('init', {
-                websiteId: '${this.website._id}',
-                scriptId: '${this.website.scriptId}'
+                websiteId: websiteId,
+                scriptId: scriptId
             });
 
             // Function to check for updates
@@ -94,7 +98,12 @@ export class ScriptGeneratorService {
                 try {
                     const response = await fetch(
                         '${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}/updates?url=' + 
-                        encodeURIComponent(window.location.href)
+                        encodeURIComponent(window.location.href),
+                        {
+                            headers: {
+                                'Authorization': 'Bearer ' + scriptId
+                            }
+                        }
                     );
                     
                     if (!response.ok) {
@@ -187,10 +196,10 @@ export class ScriptGeneratorService {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ${this.website.scriptId}'
+                        'Authorization': 'Bearer ' + scriptId
                     },
                     body: JSON.stringify({
-                        websiteId: '${this.website._id}',
+                        websiteId: websiteId,
                         url: data.url,
                         type: data.type,
                         value: data.value
