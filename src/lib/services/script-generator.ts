@@ -1,8 +1,6 @@
 import { Website } from "../schemas/website";
 import { v4 as uuidv4 } from "uuid";
 import { Document } from "mongoose";
-import fs from "fs/promises";
-import path from "path";
 
 interface WebsiteDocument extends Document {
 	_id: string;
@@ -47,23 +45,17 @@ export class ScriptGeneratorService {
 			await this.website.save();
 		}
 
-		return `/api/script/${this.website.scriptId}.js`;
+		return `/api/script/${this.website.scriptId}`;
 	}
 
 	async validateScript(scriptId: string): Promise<boolean> {
 		return this.website.scriptId === scriptId;
 	}
 
-	async getScriptContent(): Promise<string> {
+	async getScriptContent(clientScript: string): Promise<string> {
 		if (!this.website.scriptId) {
 			throw new Error("Script ID not found");
 		}
-
-		// Read the client script file
-		const clientScript = await fs.readFile(
-			path.join(process.cwd(), "src/lib/scripts/client.js"),
-			"utf-8"
-		);
 
 		// Create the initialization script with the API URL
 		const initScript = `

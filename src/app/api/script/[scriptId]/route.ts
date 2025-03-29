@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Website } from "@/lib/schemas/website";
 import connectDB from "@/lib/mongodb";
 import { ScriptGeneratorService } from "@/lib/services/script-generator";
+import { promises as fs } from "fs";
+import path from "path";
 
 export async function GET(
 	req: Request,
@@ -20,8 +22,14 @@ export async function GET(
 			return new NextResponse("Website not found", { status: 404 });
 		}
 
+		// Read the client script file
+		const clientScript = await fs.readFile(
+			path.join(process.cwd(), "src/lib/scripts/client.js"),
+			"utf-8"
+		);
+
 		const scriptGenerator = new ScriptGeneratorService(website);
-		const scriptContent = await scriptGenerator.getScriptContent();
+		const scriptContent = await scriptGenerator.getScriptContent(clientScript);
 		console.log("[Script API] Generated script content");
 
 		return new NextResponse(scriptContent, {
