@@ -23,30 +23,14 @@ export async function GET(
 		}
 
 		// Read the client script file
-		const clientScriptPath = path.join(
-			process.cwd(),
-			"src/lib/scripts/client.js"
-		);
-		console.log("[Script API] Reading client script from:", clientScriptPath);
-
-		const clientScript = await fs.readFile(clientScriptPath, "utf-8");
-		console.log(
-			"[Script API] Client script read successfully, length:",
-			clientScript.length
+		const clientScript = await fs.readFile(
+			path.join(process.cwd(), "src/lib/scripts/client.js"),
+			"utf-8"
 		);
 
 		const scriptGenerator = new ScriptGeneratorService(website);
 		const scriptContent = await scriptGenerator.getScriptContent(clientScript);
-		console.log(
-			"[Script API] Generated script content, length:",
-			scriptContent.length
-		);
-
-		// Log the first few lines of the script for debugging
-		console.log(
-			"[Script API] Script preview:",
-			scriptContent.split("\n").slice(0, 5).join("\n")
-		);
+		console.log("[Script API] Generated script content");
 
 		return new NextResponse(scriptContent, {
 			headers: {

@@ -128,7 +128,7 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 		const generateScript = async () => {
 			try {
 				const scriptGenerator = new ScriptGeneratorService(website as any);
-				const content = await scriptGenerator.getScriptContent();
+				const content = await scriptGenerator.generateScript();
 				setScriptContent(content);
 			} catch (error) {
 				console.error("Error generating script:", error);
@@ -243,12 +243,14 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 	};
 
 	const copyScriptTag = () => {
-		const scriptTag = `<script src="${process.env.NEXT_PUBLIC_APP_URL}/scripts/${website.scriptId}.js"></script>`;
-		navigator.clipboard.writeText(scriptTag);
-		toast({
-			title: "Copied",
-			description:
-				"Script tag copied to clipboard. Paste it into your website's HTML.",
+		const scriptGenerator = new ScriptGeneratorService(website as any);
+		scriptGenerator.generateScript().then((scriptTag) => {
+			navigator.clipboard.writeText(scriptTag);
+			toast({
+				title: "Copied",
+				description:
+					"Script tag copied to clipboard. Paste it into your website's HTML.",
+			});
 		});
 	};
 
@@ -384,6 +386,7 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 									will automatically:
 								</p>
 								<ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+									<li>Load the SeoBuddy script asynchronously</li>
 									<li>Update page titles and meta descriptions</li>
 									<li>Monitor for 404 errors</li>
 									<li>Track redirects</li>
@@ -391,7 +394,7 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 								</ul>
 							</div>
 							<pre className="rounded-lg bg-muted p-4 text-sm overflow-x-auto">
-								{`<script src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${website.scriptId}.js"></script>`}
+								{scriptContent}
 							</pre>
 						</div>
 					)}

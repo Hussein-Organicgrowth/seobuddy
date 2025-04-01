@@ -35,9 +35,8 @@ export class ScriptGeneratorService {
 			await this.website.save();
 		}
 
-		// Generate the script tag with instructions
-		return `<!-- Add this script tag in the <head> section of your HTML -->
-<script defer src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}"></script>`;
+		// Generate a single script tag with data attributes
+		return `<script async="true" src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}" data-website-id="${this.website._id}" data-script-id="${this.website.scriptId}"></script>`;
 	}
 
 	async generateScriptUrl(): Promise<string> {
@@ -58,19 +57,23 @@ export class ScriptGeneratorService {
 			throw new Error("Script ID not found");
 		}
 
-		// Create the initialization script with the API URL
-		const initScript = `
+		// Return the client script with configuration from data attributes
+		return `
+// Get configuration from script tag
+const script = document.currentScript;
+const websiteId = script.getAttribute('data-website-id');
+const scriptId = script.getAttribute('data-script-id');
+const apiUrl = '${process.env.NEXT_PUBLIC_APP_URL}';
+
 // Initialize SeoBuddy configuration
 window.seobuddy = {
-	websiteId: '${this.website._id}',
-	scriptId: '${this.website.scriptId}',
-	apiUrl: '${process.env.NEXT_PUBLIC_APP_URL}'
+	websiteId,
+	scriptId,
+	apiUrl
 };
 
 // Load the client script
 ${clientScript}
 `.trim();
-
-		return initScript;
 	}
 }

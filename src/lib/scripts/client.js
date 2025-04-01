@@ -1,31 +1,48 @@
 // SeoBuddy Client Script
-console.log('[SeoBuddy] Script file loaded');
+console.log("[SeoBuddy] Script file loaded");
 
 // Initialize as early as possible
 (function initializeSeoBuddy() {
-	console.log('[SeoBuddy] Starting initialization');
-	
+	console.log("[SeoBuddy] Starting initialization");
+
+	// Get configuration from script tag
+	const script = document.currentScript;
+	if (!script) {
+		console.error("[SeoBuddy] Script tag not found");
+		return;
+	}
+
+	const websiteId = script.getAttribute("data-website-id");
+	const scriptId = script.getAttribute("data-script-id");
+	const apiUrl = script.src.split("/api/script/")[0];
+
 	// Check if configuration exists
-	if (!window.seobuddy || !window.seobuddy.scriptId || !window.seobuddy.websiteId || !window.seobuddy.apiUrl) {
-		console.error('[SeoBuddy] Missing configuration:', {
-			hasSeobuddy: !!window.seobuddy,
-			scriptId: window.seobuddy?.scriptId,
-			websiteId: window.seobuddy?.websiteId,
-			apiUrl: window.seobuddy?.apiUrl
+	if (!websiteId || !scriptId || !apiUrl) {
+		console.error("[SeoBuddy] Missing configuration:", {
+			websiteId,
+			scriptId,
+			apiUrl,
 		});
 		return;
 	}
 
-	console.log('[SeoBuddy] Configuration loaded:', {
-		websiteId: window.seobuddy.websiteId,
-		scriptId: window.seobuddy.scriptId,
-		apiUrl: window.seobuddy.apiUrl
+	// Initialize SeoBuddy configuration
+	window.seobuddy = {
+		websiteId,
+		scriptId,
+		apiUrl,
+	};
+
+	console.log("[SeoBuddy] Configuration loaded:", {
+		websiteId,
+		scriptId,
+		apiUrl,
 	});
 
 	// Function to normalize URLs for comparison
 	function normalizeUrl(url) {
-		const normalized = url.split('#')[0].replace(/\\/$/, '');
-		console.log('[SeoBuddy] Normalized URL:', { original: url, normalized });
+		const normalized = url.split("#")[0].replace(/\/$/, "");
+		console.log("[SeoBuddy] Normalized URL:", { original: url, normalized });
 		return normalized;
 	}
 
@@ -33,107 +50,117 @@ console.log('[SeoBuddy] Script file loaded');
 	async function checkForUpdates() {
 		try {
 			const currentUrl = normalizeUrl(window.location.href);
-			console.log('[SeoBuddy] Checking for updates for URL:', currentUrl);
-			
-			const apiUrl = `${window.seobuddy.apiUrl}/api/script/${window.seobuddy.scriptId}/updates?url=${encodeURIComponent(currentUrl)}`;
-			console.log('[SeoBuddy] Fetching updates from:', apiUrl);
+			console.log("[SeoBuddy] Checking for updates for URL:", currentUrl);
+
+			const apiUrl = `${window.seobuddy.apiUrl}/api/script/${
+				window.seobuddy.scriptId
+			}/updates?url=${encodeURIComponent(currentUrl)}`;
+			console.log("[SeoBuddy] Fetching updates from:", apiUrl);
 
 			const response = await fetch(apiUrl, {
 				headers: {
-					'Authorization': `Bearer ${window.seobuddy.scriptId}`,
-					'Content-Type': 'application/json'
+					Authorization: `Bearer ${window.seobuddy.scriptId}`,
+					"Content-Type": "application/json",
 				},
 			});
 
 			if (!response.ok) {
-				console.error('[SeoBuddy] Update check failed:', {
+				console.error("[SeoBuddy] Update check failed:", {
 					status: response.status,
-					statusText: response.statusText
+					statusText: response.statusText,
 				});
 				throw new Error("Failed to fetch updates");
 			}
 
 			const updates = await response.json();
-			console.log('[SeoBuddy] Received updates:', updates);
+			console.log("[SeoBuddy] Received updates:", updates);
 
 			// Apply each update only if the URL matches exactly
 			updates.forEach((update) => {
 				const updateUrl = normalizeUrl(update.url);
-				console.log('[SeoBuddy] Processing update:', {
+				console.log("[SeoBuddy] Processing update:", {
 					updateUrl,
 					currentUrl,
 					type: update.type,
-					matches: currentUrl === updateUrl
+					matches: currentUrl === updateUrl,
 				});
 
 				if (currentUrl === updateUrl) {
 					if (update.type === "title") {
-						console.log('[SeoBuddy] Updating title:', {
+						console.log("[SeoBuddy] Updating title:", {
 							oldTitle: document.title,
-							newTitle: update.value
+							newTitle: update.value,
 						});
 						document.title = update.value;
-						const metaTitle = document.querySelector('meta[property="og:title"]');
+						const metaTitle = document.querySelector(
+							'meta[property="og:title"]'
+						);
 						if (metaTitle) {
 							metaTitle.setAttribute("content", update.value);
-							console.log('[SeoBuddy] Updated OG title');
+							console.log("[SeoBuddy] Updated OG title");
 						}
 					} else if (update.type === "meta") {
 						const metaDesc = document.querySelector('meta[name="description"]');
 						if (metaDesc) {
-							console.log('[SeoBuddy] Updating meta description:', {
-								oldDesc: metaDesc.getAttribute('content'),
-								newDesc: update.value
+							console.log("[SeoBuddy] Updating meta description:", {
+								oldDesc: metaDesc.getAttribute("content"),
+								newDesc: update.value,
 							});
 							metaDesc.setAttribute("content", update.value);
 						}
-						const ogDesc = document.querySelector('meta[property="og:description"]');
+						const ogDesc = document.querySelector(
+							'meta[property="og:description"]'
+						);
 						if (ogDesc) {
 							ogDesc.setAttribute("content", update.value);
-							console.log('[SeoBuddy] Updated OG description');
+							console.log("[SeoBuddy] Updated OG description");
 						}
 					}
 				} else {
-					console.log('[SeoBuddy] URL mismatch, skipping update:', {
+					console.log("[SeoBuddy] URL mismatch, skipping update:", {
 						updateUrl,
-						currentUrl
+						currentUrl,
 					});
 				}
 			});
 		} catch (error) {
-			console.error('[SeoBuddy] Update check failed:', error);
+			console.error("[SeoBuddy] Update check failed:", error);
 		}
 	}
 
 	// Check for updates every 30 seconds
-	console.log('[SeoBuddy] Setting up update interval');
+	console.log("[SeoBuddy] Setting up update interval");
 	setInterval(checkForUpdates, 30000);
 
 	// Run initial check when DOM is ready
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', () => {
-			console.log('[SeoBuddy] DOM loaded, running initial update check');
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", () => {
+			console.log("[SeoBuddy] DOM loaded, running initial update check");
 			checkForUpdates();
 		});
 	} else {
-		console.log('[SeoBuddy] DOM already loaded, running initial update check');
+		console.log("[SeoBuddy] DOM already loaded, running initial update check");
 		checkForUpdates();
 	}
 
 	// Monitor for 404 errors
 	window.addEventListener("error", function (e) {
-		if (e.target.tagName === "IMG" || e.target.tagName === "SCRIPT" || e.target.tagName === "LINK") {
+		if (
+			e.target.tagName === "IMG" ||
+			e.target.tagName === "SCRIPT" ||
+			e.target.tagName === "LINK"
+		) {
 			const url = e.target.src || e.target.href;
 			if (url) {
-				console.log('[SeoBuddy] Detected broken resource:', {
+				console.log("[SeoBuddy] Detected broken resource:", {
 					type: e.target.tagName,
-					url: url
+					url: url,
 				});
 				fetch(`${window.seobuddy.apiUrl}/api/script/events`, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						'Authorization': `Bearer ${window.seobuddy.scriptId}`
+						Authorization: `Bearer ${window.seobuddy.scriptId}`,
 					},
 					body: JSON.stringify({
 						websiteId: window.seobuddy.websiteId,
@@ -146,29 +173,34 @@ console.log('[SeoBuddy] Script file loaded');
 							url: window.location.href,
 						},
 					}),
-				}).then(() => {
-					console.log('[SeoBuddy] Reported broken resource to server');
-				}).catch(error => {
-					console.error('[SeoBuddy] Failed to report broken resource:', error);
-				});
+				})
+					.then(() => {
+						console.log("[SeoBuddy] Reported broken resource to server");
+					})
+					.catch((error) => {
+						console.error(
+							"[SeoBuddy] Failed to report broken resource:",
+							error
+						);
+					});
 			}
 		}
 	});
 
 	// Monitor for redirects
 	let lastUrl = window.location.href;
-	console.log('[SeoBuddy] Starting redirect monitoring from:', lastUrl);
+	console.log("[SeoBuddy] Starting redirect monitoring from:", lastUrl);
 	setInterval(() => {
 		if (window.location.href !== lastUrl) {
-			console.log('[SeoBuddy] Detected redirect:', {
+			console.log("[SeoBuddy] Detected redirect:", {
 				from: lastUrl,
-				to: window.location.href
+				to: window.location.href,
 			});
 			fetch(`${window.seobuddy.apiUrl}/api/script/events`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					'Authorization': `Bearer ${window.seobuddy.scriptId}`
+					Authorization: `Bearer ${window.seobuddy.scriptId}`,
 				},
 				body: JSON.stringify({
 					websiteId: window.seobuddy.websiteId,
@@ -180,14 +212,16 @@ console.log('[SeoBuddy] Script file loaded');
 						timestamp: new Date().toISOString(),
 					},
 				}),
-			}).then(() => {
-				console.log('[SeoBuddy] Reported redirect to server');
-			}).catch(error => {
-				console.error('[SeoBuddy] Failed to report redirect:', error);
-			});
+			})
+				.then(() => {
+					console.log("[SeoBuddy] Reported redirect to server");
+				})
+				.catch((error) => {
+					console.error("[SeoBuddy] Failed to report redirect:", error);
+				});
 			lastUrl = window.location.href;
 		}
 	}, 1000);
 
-	console.log('[SeoBuddy] Script setup complete');
+	console.log("[SeoBuddy] Script setup complete");
 })();
