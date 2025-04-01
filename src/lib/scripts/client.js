@@ -41,9 +41,29 @@ console.log("[SeoBuddy] Script file loaded");
 
 	// Function to normalize URLs for comparison
 	function normalizeUrl(url) {
-		const normalized = url.split("#")[0].replace(/\/$/, "");
-		console.log("[SeoBuddy] Normalized URL:", { original: url, normalized });
-		return normalized;
+		try {
+			// Create URL object to properly parse the URL
+			const urlObj = new URL(url);
+
+			// Get the pathname and remove trailing slash
+			let path = urlObj.pathname.replace(/\/$/, "");
+
+			// Remove any query parameters and hash
+			const normalized = `${urlObj.protocol}//${urlObj.host}${path}`;
+
+			console.log("[SeoBuddy] Normalized URL:", {
+				original: url,
+				normalized,
+				path,
+				host: urlObj.host,
+			});
+
+			return normalized;
+		} catch (error) {
+			console.error("[SeoBuddy] URL normalization failed:", error);
+			// Fallback to basic normalization if URL parsing fails
+			return url.split("#")[0].replace(/\/$/, "");
+		}
 	}
 
 	// Function to check for updates
@@ -68,12 +88,20 @@ console.log("[SeoBuddy] Script file loaded");
 				console.error("[SeoBuddy] Update check failed:", {
 					status: response.status,
 					statusText: response.statusText,
+					url: apiUrl,
+					headers: Object.fromEntries(response.headers.entries()),
 				});
 				throw new Error("Failed to fetch updates");
 			}
 
 			const updates = await response.json();
-			console.log("[SeoBuddy] Received updates:", updates);
+			console.log("[SeoBuddy] Received updates:", {
+				count: updates.length,
+				updates: JSON.stringify(updates, null, 2),
+				currentUrl,
+				scriptId: window.seobuddy.scriptId,
+				websiteId: window.seobuddy.websiteId,
+			});
 
 			// Apply each update only if the URL matches exactly
 			updates.forEach((update) => {
@@ -82,7 +110,11 @@ console.log("[SeoBuddy] Script file loaded");
 					updateUrl,
 					currentUrl,
 					type: update.type,
+					value: update.value,
 					matches: currentUrl === updateUrl,
+					updateId: update._id,
+					applied: update.applied,
+					timestamp: update.timestamp,
 				});
 
 				if (currentUrl === updateUrl) {
@@ -90,15 +122,42 @@ console.log("[SeoBuddy] Script file loaded");
 						console.log("[SeoBuddy] Updating title:", {
 							oldTitle: document.title,
 							newTitle: update.value,
+							updateId: update._id,
+							applied: update.applied,
 						});
+
+						// Update both title and og:title
 						document.title = update.value;
-						const metaTitle = document.querySelector(
-							'meta[property="og:title"]'
-						);
-						if (metaTitle) {
-							metaTitle.setAttribute("content", update.value);
-							console.log("[SeoBuddy] Updated OG title");
+
+						// Update Open Graph title
+						let metaTitle = document.querySelector('meta[property="og:title"]');
+						if (!metaTitle) {
+							metaTitle = document.createElement("meta");
+							metaTitle.setAttribute("property", "og:title");
+							document.head.appendChild(metaTitle);
 						}
+						metaTitle.setAttribute("content", update.value);
+
+						// Mark update as applied
+						fetch(
+							`${window.seobuddy.apiUrl}/api/script/${window.seobuddy.scriptId}/updates/${update._id}/apply`,
+							{
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+									Authorization: `Bearer ${window.seobuddy.scriptId}`,
+								},
+							}
+						)
+							.then(() => {
+								console.log("[SeoBuddy] Marked update as applied:", update._id);
+							})
+							.catch((error) => {
+								console.error(
+									"[SeoBuddy] Failed to mark update as applied:",
+									error
+								);
+							});
 					} else if (update.type === "meta") {
 						const metaDesc = document.querySelector('meta[name="description"]');
 						if (metaDesc) {
@@ -120,6 +179,8 @@ console.log("[SeoBuddy] Script file loaded");
 					console.log("[SeoBuddy] URL mismatch, skipping update:", {
 						updateUrl,
 						currentUrl,
+						updateId: update._id,
+						applied: update.applied,
 					});
 				}
 			});
