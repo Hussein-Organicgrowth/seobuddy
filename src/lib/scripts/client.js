@@ -1,6 +1,8 @@
 // SeoBuddy Client Script
 (function () {
 	// Check if configuration exists
+	console.log('[SeoBuddy] Checking configuration');
+	console.log("LOGS THE WINDOW SEOBUDDY", JSON.stringify(window.seobuddy));
 	if (!window.seobuddy || !window.seobuddy.scriptId || !window.seobuddy.websiteId || !window.seobuddy.apiUrl) {
 		console.error('[SeoBuddy] Missing configuration. Please check your script setup.');
 		return;
