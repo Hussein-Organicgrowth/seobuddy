@@ -1,15 +1,22 @@
 // SeoBuddy Client Script
-(function () {
+console.log('[SeoBuddy] Script file loaded');
+
+// Initialize as early as possible
+(function initializeSeoBuddy() {
+	console.log('[SeoBuddy] Starting initialization');
+	
 	// Check if configuration exists
-	console.log('[SeoBuddy] Checking configuration');
-	console.log("LOGS THE WINDOW SEOBUDDY", JSON.stringify(window.seobuddy));
 	if (!window.seobuddy || !window.seobuddy.scriptId || !window.seobuddy.websiteId || !window.seobuddy.apiUrl) {
-		console.error('[SeoBuddy] Missing configuration. Please check your script setup.');
+		console.error('[SeoBuddy] Missing configuration:', {
+			hasSeobuddy: !!window.seobuddy,
+			scriptId: window.seobuddy?.scriptId,
+			websiteId: window.seobuddy?.websiteId,
+			apiUrl: window.seobuddy?.apiUrl
+		});
 		return;
 	}
 
-	console.log('[SeoBuddy] Script initialized');
-	console.log('[SeoBuddy] Configuration:', {
+	console.log('[SeoBuddy] Configuration loaded:', {
 		websiteId: window.seobuddy.websiteId,
 		scriptId: window.seobuddy.scriptId,
 		apiUrl: window.seobuddy.apiUrl
@@ -101,9 +108,17 @@
 	// Check for updates every 30 seconds
 	console.log('[SeoBuddy] Setting up update interval');
 	setInterval(checkForUpdates, 30000);
-	// Also check when the page loads
-	console.log('[SeoBuddy] Running initial update check');
-	checkForUpdates();
+
+	// Run initial check when DOM is ready
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', () => {
+			console.log('[SeoBuddy] DOM loaded, running initial update check');
+			checkForUpdates();
+		});
+	} else {
+		console.log('[SeoBuddy] DOM already loaded, running initial update check');
+		checkForUpdates();
+	}
 
 	// Monitor for 404 errors
 	window.addEventListener("error", function (e) {

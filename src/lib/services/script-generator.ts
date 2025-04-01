@@ -35,8 +35,9 @@ export class ScriptGeneratorService {
 			await this.website.save();
 		}
 
-		// Generate the simple script tag with the correct API endpoint
-		return `<script src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}"></script>`;
+		// Generate the script tag with instructions
+		return `<!-- Add this script tag in the <head> section of your HTML -->
+<script defer src="${process.env.NEXT_PUBLIC_APP_URL}/api/script/${this.website.scriptId}"></script>`;
 	}
 
 	async generateScriptUrl(): Promise<string> {
@@ -59,16 +60,16 @@ export class ScriptGeneratorService {
 
 		// Create the initialization script with the API URL
 		const initScript = `
-		// Initialize SeoBuddy configuration
-		window.seobuddy = {
-			websiteId: '${this.website._id}',
-			scriptId: '${this.website.scriptId}',
-			apiUrl: '${process.env.NEXT_PUBLIC_APP_URL}'
-		};
-		
-		// Load the client script
-		${clientScript}
-		`.trim();
+// Initialize SeoBuddy configuration
+window.seobuddy = {
+	websiteId: '${this.website._id}',
+	scriptId: '${this.website.scriptId}',
+	apiUrl: '${process.env.NEXT_PUBLIC_APP_URL}'
+};
+
+// Load the client script
+${clientScript}
+`.trim();
 
 		return initScript;
 	}
