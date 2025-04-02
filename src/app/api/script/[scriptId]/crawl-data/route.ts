@@ -55,6 +55,12 @@ function corsResponse(data: any, status: number = 200) {
 	});
 }
 
+// Helper function to normalize URLs for comparison
+function normalizeUrl(url: string): string {
+	// Remove trailing slash if present
+	return url.replace(/\/$/, "");
+}
+
 export async function GET(
 	request: Request,
 	{ params }: { params: { scriptId: string } }
@@ -72,22 +78,76 @@ export async function GET(
 		const url = searchParams.get("url");
 		const scriptId = await params.scriptId;
 
+		console.log("[API] Fetching crawl data:", { scriptId, url });
+
 		await connectDB();
 
 		const website = await Website.findOne({ scriptId });
+		console.log("[API] Found website:", {
+			found: !!website,
+			scriptId,
+			hasCrawlData: website?.crawlData?.length > 0,
+		});
 
 		if (!website) {
+			console.log("[API] Website not found:", scriptId);
 			return corsResponse({ error: "Website not found" }, 404);
 		}
 
 		if (url) {
+			console.log("[API] URL provided:", url);
+
+			// Normalize the requested URL
+			const normalizedUrl = normalizeUrl(url);
+
+			// Log all URLs in crawlData for comparison
+			console.log(
+				"[API] All URLs in crawlData:",
+				website.crawlData.map((data: CrawlData) => ({
+					url: data.url,
+					normalized: normalizeUrl(data.url),
+					matches: normalizeUrl(data.url) === normalizedUrl,
+				}))
+			);
+
 			// If URL is provided, return only the most recent crawl data for that URL
 			const crawlData = website.crawlData
-				.filter((data: CrawlData) => data.url === url)
+				.filter((data: CrawlData) => {
+					const matches = normalizeUrl(data.url) === normalizedUrl;
+					console.log("[API] Comparing URLs:", {
+						stored: data.url,
+						normalizedStored: normalizeUrl(data.url),
+						requested: url,
+						normalizedRequested: normalizedUrl,
+						matches,
+					});
+					return matches;
+				})
 				.sort(
 					(a: CrawlData, b: CrawlData) =>
 						new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
 				)[0];
+
+			console.log("[API] Found crawl data for URL:", {
+				url,
+				found: !!crawlData,
+				timestamp: crawlData?.timestamp,
+				matchedUrl: crawlData?.url,
+			});
+
+			if (!crawlData) {
+				// Return a default structure when no data is found
+				return corsResponse({
+					url,
+					timestamp: new Date().toISOString(),
+					data: {
+						title: "",
+						metaDescription: "",
+						redirects: [],
+						brokenLinks: [],
+					},
+				});
+			}
 
 			return corsResponse(serializeCrawlData(crawlData));
 		} else {
@@ -97,11 +157,29 @@ export async function GET(
 					new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
 			);
 
+			console.log("[API] Returning all crawl data:", {
+				count: allCrawlData.length,
+			});
+
 			return corsResponse(allCrawlData.map(serializeCrawlData));
 		}
 	} catch (error) {
-		console.error("Error fetching crawl data:", error);
-		return corsResponse({ error: "Internal server error" }, 500);
+		console.error("[API] Error fetching crawl data:", error);
+		// Log more details about the error
+		if (error instanceof Error) {
+			console.error("[API] Error details:", {
+				message: error.message,
+				stack: error.stack,
+				name: error.name,
+			});
+		}
+		return corsResponse(
+			{
+				error: "Internal server error",
+				details: error instanceof Error ? error.message : "Unknown error",
+			},
+			500
+		);
 	}
 }
 
