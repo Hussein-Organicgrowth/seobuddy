@@ -39,16 +39,19 @@ function serializeCrawlData(data: any): CrawlData {
 	};
 }
 
+// CORS headers
+const corsHeaders = {
+	"Access-Control-Allow-Origin": "*",
+	"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+	"Access-Control-Allow-Headers": "Content-Type, Authorization",
+	"Access-Control-Max-Age": "86400", // 24 hours
+};
+
 // Helper function to create CORS response
 function corsResponse(data: any, status: number = 200) {
 	return NextResponse.json(data, {
 		status,
-		headers: {
-			"Access-Control-Allow-Origin": "*",
-			"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-			"Access-Control-Allow-Headers": "Content-Type, Authorization",
-			"Access-Control-Max-Age": "86400", // 24 hours
-		},
+		headers: corsHeaders,
 	});
 }
 
@@ -56,6 +59,14 @@ export async function GET(
 	request: Request,
 	{ params }: { params: { scriptId: string } }
 ) {
+	// Handle preflight request
+	if (request.method === "OPTIONS") {
+		return new NextResponse(null, {
+			status: 204,
+			headers: corsHeaders,
+		});
+	}
+
 	try {
 		const { searchParams } = new URL(request.url);
 		const url = searchParams.get("url");
@@ -98,6 +109,14 @@ export async function POST(
 	request: Request,
 	{ params }: { params: { scriptId: string } }
 ) {
+	// Handle preflight request
+	if (request.method === "OPTIONS") {
+		return new NextResponse(null, {
+			status: 204,
+			headers: corsHeaders,
+		});
+	}
+
 	try {
 		const body = await request.json();
 		const { url, data } = body;
@@ -166,5 +185,8 @@ export async function POST(
 }
 
 export async function OPTIONS(request: Request) {
-	return corsResponse(null, 204);
+	return new NextResponse(null, {
+		status: 204,
+		headers: corsHeaders,
+	});
 }
