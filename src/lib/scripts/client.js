@@ -74,8 +74,8 @@ console.log("[SeoBuddy] Script file loaded");
 
 			const apiUrl = `${window.seobuddy.apiUrl}/api/script/${
 				window.seobuddy.scriptId
-			}/updates?url=${encodeURIComponent(currentUrl)}`;
-			console.log("[SeoBuddy] Fetching updates from:", apiUrl);
+			}/crawl-data?url=${encodeURIComponent(currentUrl)}`;
+			console.log("[SeoBuddy] Fetching crawl data from:", apiUrl);
 
 			const response = await fetch(apiUrl, {
 				headers: {
@@ -85,105 +85,60 @@ console.log("[SeoBuddy] Script file loaded");
 			});
 
 			if (!response.ok) {
-				console.error("[SeoBuddy] Update check failed:", {
+				console.error("[SeoBuddy] Failed to fetch crawl data:", {
 					status: response.status,
 					statusText: response.statusText,
 					url: apiUrl,
-					headers: Object.fromEntries(response.headers.entries()),
 				});
-				throw new Error("Failed to fetch updates");
+				throw new Error("Failed to fetch crawl data");
 			}
 
-			const updates = await response.json();
-			console.log("[SeoBuddy] Received updates:", {
-				count: updates.length,
-				updates: JSON.stringify(updates, null, 2),
-				currentUrl,
-				scriptId: window.seobuddy.scriptId,
-				websiteId: window.seobuddy.websiteId,
-			});
+			const crawlData = await response.json();
+			console.log("[SeoBuddy] Received crawl data:", crawlData);
 
-			// Apply each update only if the URL matches exactly
-			updates.forEach((update) => {
-				const updateUrl = normalizeUrl(update.url);
-				console.log("[SeoBuddy] Processing update:", {
-					updateUrl,
-					currentUrl,
-					type: update.type,
-					value: update.value,
-					matches: currentUrl === updateUrl,
-					updateId: update._id,
-					applied: update.applied,
-					timestamp: update.timestamp,
-				});
-
-				if (currentUrl === updateUrl) {
-					if (update.type === "title") {
-						console.log("[SeoBuddy] Updating title:", {
-							oldTitle: document.title,
-							newTitle: update.value,
-							updateId: update._id,
-							applied: update.applied,
-						});
-
-						// Update both title and og:title
-						document.title = update.value;
-
-						// Update Open Graph title
-						let metaTitle = document.querySelector('meta[property="og:title"]');
-						if (!metaTitle) {
-							metaTitle = document.createElement("meta");
-							metaTitle.setAttribute("property", "og:title");
-							document.head.appendChild(metaTitle);
-						}
-						metaTitle.setAttribute("content", update.value);
-
-						// Mark update as applied
-						fetch(
-							`${window.seobuddy.apiUrl}/api/script/${window.seobuddy.scriptId}/updates/${update._id}/apply`,
-							{
-								method: "POST",
-								headers: {
-									"Content-Type": "application/json",
-									Authorization: `Bearer ${window.seobuddy.scriptId}`,
-								},
-							}
-						)
-							.then(() => {
-								console.log("[SeoBuddy] Marked update as applied:", update._id);
-							})
-							.catch((error) => {
-								console.error(
-									"[SeoBuddy] Failed to mark update as applied:",
-									error
-								);
-							});
-					} else if (update.type === "meta") {
-						const metaDesc = document.querySelector('meta[name="description"]');
-						if (metaDesc) {
-							console.log("[SeoBuddy] Updating meta description:", {
-								oldDesc: metaDesc.getAttribute("content"),
-								newDesc: update.value,
-							});
-							metaDesc.setAttribute("content", update.value);
-						}
-						const ogDesc = document.querySelector(
-							'meta[property="og:description"]'
-						);
-						if (ogDesc) {
-							ogDesc.setAttribute("content", update.value);
-							console.log("[SeoBuddy] Updated OG description");
-						}
-					}
-				} else {
-					console.log("[SeoBuddy] URL mismatch, skipping update:", {
-						updateUrl,
-						currentUrl,
-						updateId: update._id,
-						applied: update.applied,
+			if (crawlData && crawlData.data) {
+				// Update title if it exists and is different
+				if (crawlData.data.title && crawlData.data.title !== document.title) {
+					console.log("[SeoBuddy] Updating title:", {
+						oldTitle: document.title,
+						newTitle: crawlData.data.title,
 					});
+
+					// Update both title and og:title
+					document.title = crawlData.data.title;
+
+					// Update Open Graph title
+					let metaTitle = document.querySelector('meta[property="og:title"]');
+					if (!metaTitle) {
+						metaTitle = document.createElement("meta");
+						metaTitle.setAttribute("property", "og:title");
+						document.head.appendChild(metaTitle);
+					}
+					metaTitle.setAttribute("content", crawlData.data.title);
 				}
-			});
+
+				// Update meta description if it exists and is different
+				const metaDesc = document.querySelector('meta[name="description"]');
+				if (crawlData.data.metaDescription && metaDesc) {
+					const currentDesc = metaDesc.getAttribute("content");
+					if (crawlData.data.metaDescription !== currentDesc) {
+						console.log("[SeoBuddy] Updating meta description:", {
+							oldDesc: currentDesc,
+							newDesc: crawlData.data.metaDescription,
+						});
+						metaDesc.setAttribute("content", crawlData.data.metaDescription);
+					}
+				}
+
+				// Update og:description if it exists
+				const ogDesc = document.querySelector(
+					'meta[property="og:description"]'
+				);
+				if (crawlData.data.metaDescription && ogDesc) {
+					ogDesc.setAttribute("content", crawlData.data.metaDescription);
+					console.log("[SeoBuddy] Updated OG description");
+				}
+			}
 		} catch (error) {
 			console.error("[SeoBuddy] Update check failed:", error);
 		}

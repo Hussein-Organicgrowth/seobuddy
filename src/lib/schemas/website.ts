@@ -70,31 +70,6 @@ const websiteSchema = new mongoose.Schema({
 			data: mongoose.Schema.Types.Mixed,
 		},
 	],
-	pendingUpdates: [
-		{
-			url: {
-				type: String,
-				required: true,
-			},
-			type: {
-				type: String,
-				enum: ["title", "meta"],
-				required: true,
-			},
-			value: {
-				type: String,
-				required: true,
-			},
-			timestamp: {
-				type: Date,
-				default: Date.now,
-			},
-			applied: {
-				type: Boolean,
-				default: false,
-			},
-		},
-	],
 	createdAt: {
 		type: Date,
 		default: Date.now,

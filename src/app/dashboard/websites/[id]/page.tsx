@@ -21,11 +21,30 @@ interface WebsiteData {
 	lastCrawl?: Date;
 	issues?: Array<{
 		type: string;
-		message: string;
+		description: string;
 		severity: "error" | "warning" | "info";
 	}>;
 	scriptTag?: string;
 	scriptId: string;
+	crawlData?: Array<{
+		url: string;
+		timestamp: Date;
+		data: {
+			title?: string;
+			metaDescription?: string;
+			redirects?: Array<{
+				from: string;
+				to: string;
+				statusCode: number;
+			}>;
+			brokenLinks?: Array<{
+				url: string;
+				statusCode: number;
+				text: string;
+				sourceUrl: string;
+			}>;
+		};
+	}>;
 }
 
 interface WebsiteDocument {
@@ -84,8 +103,15 @@ async function getWebsite(
 			url: website.url,
 			status: website.status,
 			lastCrawl: website.lastCrawl ? new Date(website.lastCrawl) : undefined,
-			crawlData: website.crawlData,
-			issues: website.issues,
+			crawlData: website.crawlData?.map((data) => ({
+				...data,
+				timestamp: new Date(data.timestamp),
+			})),
+			issues: website.issues?.map((issue) => ({
+				type: issue.type,
+				description: issue.message,
+				severity: issue.severity,
+			})),
 			scriptTag: website.scriptTag,
 			scriptId: website.scriptId,
 		};

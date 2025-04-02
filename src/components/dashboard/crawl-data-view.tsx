@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 interface CrawlData {
 	url: string;
-	timestamp: Date;
+	timestamp: string | Date;
 	data: {
 		title?: string;
 		metaDescription?: string;
@@ -46,7 +46,7 @@ interface CrawlDataViewProps {
 export function CrawlDataView({
 	websiteId,
 	scriptId,
-	crawlData,
+	crawlData: initialCrawlData,
 }: CrawlDataViewProps) {
 	const [activeTab, setActiveTab] = useState("titles");
 	const [editingTitle, setEditingTitle] = useState<{
@@ -61,27 +61,48 @@ export function CrawlDataView({
 	const [newMeta, setNewMeta] = useState("");
 	const [isTitleDialogOpen, setIsTitleDialogOpen] = useState(false);
 	const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
+	const [crawlData, setCrawlData] = useState<CrawlData[]>(initialCrawlData);
 	const { toast } = useToast();
+
+	// Function to fetch the latest crawl data
+	const fetchLatestCrawlData = async () => {
+		try {
+			const response = await fetch(`/api/script/${scriptId}/crawl-data`);
+			if (!response.ok) throw new Error("Failed to fetch crawl data");
+			const data = await response.json();
+			setCrawlData(data);
+		} catch (error) {
+			console.error("Error fetching crawl data:", error);
+		}
+	};
+
+	// Fetch latest data periodically
+	useEffect(() => {
+		const interval = setInterval(fetchLatestCrawlData, 30000); // Fetch every 30 seconds
+		return () => clearInterval(interval);
+	}, [scriptId]);
 
 	const handleTitleUpdate = async () => {
 		if (!editingTitle) return;
 
 		try {
-			const response = await fetch("/api/script/update", {
+			const response = await fetch(`/api/script/${scriptId}/crawl-data`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${scriptId}`,
 				},
 				body: JSON.stringify({
-					websiteId,
 					url: editingTitle.url,
-					type: "title",
-					value: newTitle,
+					data: {
+						title: newTitle,
+					},
 				}),
 			});
 
 			if (!response.ok) throw new Error("Failed to update title");
+
+			// Fetch the latest data after update
+			await fetchLatestCrawlData();
 
 			toast({
 				title: "Title Updated",
@@ -102,21 +123,23 @@ export function CrawlDataView({
 		if (!editingMeta) return;
 
 		try {
-			const response = await fetch("/api/script/update", {
+			const response = await fetch(`/api/script/${scriptId}/crawl-data`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					Authorization: `Bearer ${scriptId}`,
 				},
 				body: JSON.stringify({
-					websiteId,
 					url: editingMeta.url,
-					type: "meta",
-					value: newMeta,
+					data: {
+						metaDescription: newMeta,
+					},
 				}),
 			});
 
 			if (!response.ok) throw new Error("Failed to update meta description");
+
+			// Fetch the latest data after update
+			await fetchLatestCrawlData();
 
 			toast({
 				title: "Meta Description Updated",

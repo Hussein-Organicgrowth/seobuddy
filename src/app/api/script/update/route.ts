@@ -2,6 +2,26 @@ import { NextResponse } from "next/server";
 import { Website } from "@/lib/schemas/website";
 import connectDB from "@/lib/mongodb";
 
+interface CrawlData {
+	url: string;
+	timestamp: Date;
+	data: {
+		title?: string;
+		metaDescription?: string;
+		redirects?: Array<{
+			from: string;
+			to: string;
+			statusCode: number;
+		}>;
+		brokenLinks?: Array<{
+			url: string;
+			statusCode: number;
+			text: string;
+			sourceUrl: string;
+		}>;
+	};
+}
+
 export async function POST(req: Request) {
 	try {
 		console.log("[Update API] Received request");
@@ -56,15 +76,25 @@ export async function POST(req: Request) {
 			});
 		}
 
-		// Add the update to pendingUpdates array
-		website.pendingUpdates = website.pendingUpdates || [];
-		website.pendingUpdates.push({
-			url,
-			type,
-			value,
-			applied: false,
-			timestamp: new Date(),
-		});
+		// Find the crawl data entry for this URL
+		const crawlDataIndex = website.crawlData.findIndex(
+			(data: CrawlData) => data.url === url
+		);
+
+		if (crawlDataIndex === -1) {
+			// If no crawl data exists for this URL, create a new entry
+			website.crawlData.push({
+				url,
+				timestamp: new Date(),
+				data: {
+					[type]: value,
+				},
+			});
+		} else {
+			// Update the existing crawl data
+			website.crawlData[crawlDataIndex].data[type] = value;
+			website.crawlData[crawlDataIndex].timestamp = new Date();
+		}
 
 		await website.save();
 		console.log("[Update API] Update saved successfully");

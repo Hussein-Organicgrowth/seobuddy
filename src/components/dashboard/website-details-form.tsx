@@ -124,6 +124,21 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 	const [scriptContent, setScriptContent] = useState<string>("");
 	const { toast } = useToast();
 
+	// Serialize the crawl data
+	const serializedCrawlData = website.crawlData?.map((data) => ({
+		url: data.url,
+		timestamp:
+			data.timestamp instanceof Date
+				? data.timestamp.toISOString()
+				: data.timestamp,
+		data: {
+			title: data.data.title,
+			metaDescription: data.data.metaDescription,
+			redirects: data.data.redirects,
+			brokenLinks: data.data.brokenLinks,
+		},
+	}));
+
 	useEffect(() => {
 		const generateScript = async () => {
 			try {
@@ -361,7 +376,7 @@ export function WebsiteDetailsForm({ website }: WebsiteDetailsFormProps) {
 				<CrawlDataView
 					websiteId={website._id}
 					scriptId={website.scriptId}
-					crawlData={website.crawlData}
+					crawlData={serializedCrawlData || []}
 				/>
 			)}
 
