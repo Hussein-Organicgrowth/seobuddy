@@ -39,6 +39,19 @@ function serializeCrawlData(data: any): CrawlData {
 	};
 }
 
+// Helper function to create CORS response
+function corsResponse(data: any, status: number = 200) {
+	return NextResponse.json(data, {
+		status,
+		headers: {
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			"Access-Control-Max-Age": "86400", // 24 hours
+		},
+	});
+}
+
 export async function GET(
 	request: Request,
 	{ params }: { params: { scriptId: string } }
@@ -53,7 +66,7 @@ export async function GET(
 		const website = await Website.findOne({ scriptId });
 
 		if (!website) {
-			return NextResponse.json({ error: "Website not found" }, { status: 404 });
+			return corsResponse({ error: "Website not found" }, 404);
 		}
 
 		if (url) {
@@ -65,7 +78,7 @@ export async function GET(
 						new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
 				)[0];
 
-			return NextResponse.json(serializeCrawlData(crawlData));
+			return corsResponse(serializeCrawlData(crawlData));
 		} else {
 			// If no URL is provided, return all crawl data sorted by timestamp
 			const allCrawlData = website.crawlData.sort(
@@ -73,14 +86,11 @@ export async function GET(
 					new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
 			);
 
-			return NextResponse.json(allCrawlData.map(serializeCrawlData));
+			return corsResponse(allCrawlData.map(serializeCrawlData));
 		}
 	} catch (error) {
 		console.error("Error fetching crawl data:", error);
-		return NextResponse.json(
-			{ error: "Internal server error" },
-			{ status: 500 }
-		);
+		return corsResponse({ error: "Internal server error" }, 500);
 	}
 }
 
@@ -94,10 +104,7 @@ export async function POST(
 		const scriptId = await params.scriptId;
 
 		if (!url || !data) {
-			return NextResponse.json(
-				{ error: "URL and data are required" },
-				{ status: 400 }
-			);
+			return corsResponse({ error: "URL and data are required" }, 400);
 		}
 
 		await connectDB();
@@ -105,7 +112,7 @@ export async function POST(
 		const website = await Website.findOne({ scriptId });
 
 		if (!website) {
-			return NextResponse.json({ error: "Website not found" }, { status: 404 });
+			return corsResponse({ error: "Website not found" }, 404);
 		}
 
 		// Find existing crawl data for this URL
@@ -151,23 +158,13 @@ export async function POST(
 			(item: CrawlData) => item.url === url
 		);
 
-		return NextResponse.json(serializeCrawlData(updatedData));
+		return corsResponse(serializeCrawlData(updatedData));
 	} catch (error) {
 		console.error("Error updating crawl data:", error);
-		return NextResponse.json(
-			{ error: "Internal server error" },
-			{ status: 500 }
-		);
+		return corsResponse({ error: "Internal server error" }, 500);
 	}
 }
 
 export async function OPTIONS(request: Request) {
-	return new NextResponse(null, {
-		status: 204,
-		headers: {
-			"Access-Control-Allow-Origin": "*",
-			"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-			"Access-Control-Allow-Headers": "Content-Type, Authorization",
-		},
-	});
+	return corsResponse(null, 204);
 }
